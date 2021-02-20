@@ -2,11 +2,10 @@ package routes
 
 import (
 	"fmt"
-	"net/http"
-	"offerapp/models"
-
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
+	"net/http"
+	"offersapp/models"
 )
 
 func UserRegister(c *gin.Context) {
@@ -26,7 +25,18 @@ func UserRegister(c *gin.Context) {
 		return
 	}
 
-	c.JSON(
-		http.StatusOK,
-		gin.H{"usr_id": user.ID})
+	token, err := user.GetAuthToken()
+	if err == nil {
+		c.JSON(
+			http.StatusOK,
+			gin.H{
+				"token": token,
+			})
+		return
+	}
+
+	c.Json(http.StatusOK, gin.H{
+		"user_id": user.ID,
+	})
+
 }
