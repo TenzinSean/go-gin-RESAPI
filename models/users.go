@@ -13,7 +13,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
 var (
 	tokenSecret = []byte(os.Getenv("TOKEN_SECRET"))
 )
@@ -51,7 +50,7 @@ func (u *User) Register(conn *pgx.Conn) error {
 		return fmt.Errorf("A user with that email already exists")
 	}
 
-	pwdHash, err := bcrypt.GeneratedFromPassword([]byte(u.Password), bcrypt.DefaultCost)
+	pwdHash, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return fmt.Errorf("There was an error creating your account")
 	}
@@ -59,11 +58,9 @@ func (u *User) Register(conn *pgx.Conn) error {
 	u.PasswordHash = string(pwdHash)
 
 	now := time.Now()
-	_, err = conn.Exec(context.Background(), "INSERT INTO user_account (created_at, updated_at,
-		email, password_hash) VALUES($1, $2, $3, $4)", now, now, u.Email, u.PasswordHash)
+	_, err = conn.Exec(context.Background(), "INSERT INTO user_account (created_at, updated_at, email, password_hash) VALUES($1, $2, $3, $4)", now, now, u.Email, u.PasswordHash)
 	return err
 }
-
 
 //GetAuthToken returns the auth token to be used
 func (u *User) GetAuthToken() (string, error) {
@@ -72,6 +69,21 @@ func (u *User) GetAuthToken() (string, error) {
 	claims["user_id"] = u.ID
 	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, &claims)
-	authToken, err := token.SingedString(tokenSecret)
+	authToken, err := token.SignedString(tokenSecret)
 	return authToken, err
+}
+
+func (u *User) IsAuthenticated(conn *pgx.Conn) error {
+	row := conn.QueryRow(context.Background(), "SELECT id, password_hash from user_account WHERE email = $1", u.Email)
+	err := row.Scan(&u.ID, &u.PasswordHash)
+	if err == pgx.ErrNoRows {
+		fmt.Println("User with email not found")
+		return fmt.Errorf("Invalid login credentials")
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(u.Password))
+	if err != nil {
+		return fmt.Errorf("Invalid login credentials")
+	}
+	return nil
 }
