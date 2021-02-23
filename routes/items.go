@@ -1,12 +1,25 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 	"offersapp/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
 )
+
+func ItemsIndex(c *gin.Context) {
+	db, _ := c.Get("db")
+	conn := db.(pgx.Conn)
+	items, err := models.GetAllItems(&conn)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"items": items})
+
+}
 
 func ItemsCreate(c *gin.Context) {
 	userID := c.GetString("user_id")

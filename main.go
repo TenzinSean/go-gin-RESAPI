@@ -30,6 +30,7 @@ func main() {
 
 	itemsGroup := router.Group("items")
 	{
+		itemsGroup.GET("index", routes.ItemsIndex)
 		itemsGroup.POST("create", authMiddleWare(), routes.ItemsCreate)
 	}
 
